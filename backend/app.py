@@ -196,6 +196,12 @@ def _state_dict(session: SessionState) -> Dict[str, Any]:
         "is_complete": round_obj.is_complete if round_obj else False,
         "action_log": session.action_log,
     }
+    # Include legal actions for the human when it's their turn
+    if round_obj and awaiting == session.human_name:
+        # Find the human player object
+        human = next((p for p in game.players if p.name == session.human_name), None)
+        if human is not None:
+            state["legal_actions"] = _legal_actions_for(round_obj, human)
     if round_obj and round_obj.is_complete:
         state["winners"] = getattr(round_obj, "winners", [])
         state["winning_hand"] = getattr(round_obj, "winning_hand", "")
