@@ -1,0 +1,2 @@
+[console_scripts]
+poker-cli = pypokerengine.cli.poker_cli:main

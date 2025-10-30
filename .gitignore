@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Node / Vite
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Env
+.env
+frontend/.env.local
+
+# Editor
+.vscode/
+.idea/
+
