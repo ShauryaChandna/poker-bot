@@ -90,8 +90,15 @@ class ActionManager:
         """
         amount_to_call = current_bet - player.current_bet
         
-        # Minimum raise is ALWAYS the big blind amount
-        min_raise = big_blind
+        # Minimum total bet for a raise:
+        # - If no outstanding bet, minimum is a bet of at least big blind
+        # - If there is an outstanding bet (e.g., BB=20 preflop), minimum total bet
+        #   must be current_bet + big_blind (e.g., 40). This prevents redundant
+        #   "raise" to the same amount as a call.
+        if current_bet == 0:
+            min_raise = big_blind
+        else:
+            min_raise = current_bet + big_blind
         
         # Calculate maximum raise using official pot-limit formula
         if current_bet == 0:
