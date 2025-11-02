@@ -249,6 +249,26 @@ def _maybe_finish_hand(session: SessionState):
         session.action_log.append(f"Showdown — Winner(s): {winners}; Pot: {result.get('pot')}")
 
 
+def _evaluate_player_hand(player: Player, round_obj) -> Optional[str]:
+    """Evaluate a player's current best hand from hole cards and community cards."""
+    from pypokerengine.engine import Card, HandEvaluator
+    
+    if not player.is_active or not player.hole_cards:
+        return None
+    
+    # Need at least flop to evaluate a hand
+    if not round_obj.community_cards or len(round_obj.community_cards) < 3:
+        return None
+    
+    try:
+        # Combine hole cards and community cards
+        all_cards = player.hole_cards + round_obj.community_cards
+        rank, tiebreakers, hand_name = HandEvaluator.evaluate_hand(all_cards)
+        return hand_name
+    except Exception:
+        return None
+
+
 def _state_dict(session: SessionState) -> Dict[str, Any]:
     game = session.game
     round_obj = game.current_round
@@ -271,6 +291,29 @@ def _state_dict(session: SessionState) -> Dict[str, Any]:
         "action_log": session.action_log,
         "big_blind": round_obj.big_blind if round_obj else game.big_blind,
     }
+    
+    # Evaluate and include hand descriptions for each player
+    # Human: show from flop onwards (when community cards are available)
+    # Bot: show only at showdown
+    if round_obj and round_obj.community_cards and len(round_obj.community_cards) >= 3:
+        hand_descriptions: Dict[str, str] = {}
+        
+        for player in game.players:
+            if player.is_active:
+                # Human: show hand from flop onwards
+                if player.name == session.human_name:
+                    hand_desc = _evaluate_player_hand(player, round_obj)
+                    if hand_desc:
+                        hand_descriptions[player.name] = hand_desc
+                # Bot: show hand only at showdown
+                elif round_obj.is_complete:
+                    hand_desc = _evaluate_player_hand(player, round_obj)
+                    if hand_desc:
+                        hand_descriptions[player.name] = hand_desc
+        
+        if hand_descriptions:
+            state["hand_descriptions"] = hand_descriptions
+    
     # Include legal actions for the human when it's their turn
     if round_obj and awaiting == session.human_name:
         # Find the human player object
@@ -286,77 +329,81 @@ def _state_dict(session: SessionState) -> Dict[str, Any]:
 
 
 def _auto_play_bots(session: SessionState):
+    """
+    Make the bot act ONCE. Stop after one action.
+    The frontend will call this again after the timer expires for the next action.
+    """
     game = session.game
     round_obj = game.current_round
     if not round_obj:
         return
-    while True:
+    
+    # Find the next actor
+    actor = _find_next_to_act(round_obj)
+    if not actor:
+        # No one needs to act - advance/finish
+        _maybe_advance(round_obj, session)
+        _maybe_finish_hand(session)
         actor = _find_next_to_act(round_obj)
         if not actor:
-            # No one needs to act - advance/finish
-            _maybe_advance(round_obj, session)
-            _maybe_finish_hand(session)
-            actor = _find_next_to_act(round_obj)
-            if not actor:
-                # Hand is complete or no one can act
-                break
-        # Stop if it's human turn
-        if actor.name == session.human_name:
-            break
-        # Bot acts with simple policy
-        amount_to_call = round_obj.current_bet - actor.current_bet
+            # Hand is complete or no one can act
+            return
+    
+    # Stop if it's human turn
+    if actor.name == session.human_name:
+        return
+    
+    # Bot acts ONCE with simple policy
+    amount_to_call = round_obj.current_bet - actor.current_bet
+    
+    # Handle forced all-in FIRST: if bot can't match bet but has chips, call with all chips
+    if amount_to_call > 0 and actor.stack < amount_to_call and actor.stack > 0 and actor.can_act():
+        # Forced all-in: call with remaining chips (player.call will handle this)
+        _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
+        print(f"Bot {actor.name} forced all-in: called {round_obj.current_bet} with stack {actor.stack}")
+    else:
+        # Normal action logic
+        legal = _legal_actions_for(round_obj, actor)
+        print(f"Bot {actor.name} acting: legal={legal}, street={round_obj.street.value}, current_bet={round_obj.current_bet}, actor.current_bet={actor.current_bet}, stack={actor.stack}")
         
-        # Handle forced all-in FIRST: if bot can't match bet but has chips, call with all chips
-        if amount_to_call > 0 and actor.stack < amount_to_call and actor.stack > 0 and actor.can_act():
-            # Forced all-in: call with remaining chips (player.call will handle this)
-            # We need to call with the full current_bet amount, player.call will handle going all-in
+        if legal.get("check"):
+            _apply_action(round_obj, actor, "check", 0, session)
+            print(f"Bot {actor.name} checked")
+        elif legal.get("call"):
             _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
-            print(f"Bot {actor.name} forced all-in: called {round_obj.current_bet} with stack {actor.stack}")
+            print(f"Bot {actor.name} called {round_obj.current_bet}")
         else:
-            # Normal action logic
-            legal = _legal_actions_for(round_obj, actor)
-            print(f"Bot {actor.name} acting: legal={legal}, street={round_obj.street.value}, current_bet={round_obj.current_bet}, actor.current_bet={actor.current_bet}, stack={actor.stack}")
-            
-            if legal.get("check"):
-                _apply_action(round_obj, actor, "check", 0, session)
-                print(f"Bot {actor.name} checked")
-            elif legal.get("call"):
+            # If fold is the only option, but player can still act (has chips), 
+            # and there's a bet they can't match, they should go all-in instead of folding
+            if amount_to_call > 0 and actor.stack > 0 and actor.can_act():
+                # Forced all-in instead of folding
                 _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
-                print(f"Bot {actor.name} called {round_obj.current_bet}")
+                print(f"Bot {actor.name} forced all-in instead of folding: called {round_obj.current_bet} with stack {actor.stack}")
             else:
-                # If fold is the only option, but player can still act (has chips), 
-                # and there's a bet they can't match, they should go all-in instead of folding
-                if amount_to_call > 0 and actor.stack > 0 and actor.can_act():
-                    # Forced all-in instead of folding
-                    _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
-                    print(f"Bot {actor.name} forced all-in instead of folding: called {round_obj.current_bet} with stack {actor.stack}")
-                else:
-                    _apply_action(round_obj, actor, "fold", 0, session)
-                    print(f"Bot {actor.name} folded")
-        # After bot action, check if hand finished or if we need to advance
+                _apply_action(round_obj, actor, "fold", 0, session)
+                print(f"Bot {actor.name} folded")
+    
+    # After bot action, check if hand finished
+    _maybe_finish_hand(session)
+    if round_obj.is_complete:
+        return
+    
+    # Check if betting round is complete after bot action - if so, advance street
+    # But DON'T continue looping - let the frontend timer handle the next action
+    next_actor = _find_next_to_act(round_obj)
+    if not next_actor:
+        # Betting round complete - advance/finish
+        _maybe_advance(round_obj, session)
         _maybe_finish_hand(session)
-        if round_obj.is_complete:
-            break
-        # Check if betting round is complete after bot action
-        next_actor = _find_next_to_act(round_obj)
-        if not next_actor:
-            # Betting round complete - advance/finish
-            _maybe_advance(round_obj, session)
-            _maybe_finish_hand(session)
-            if round_obj.is_complete:
-                break
-            # Check again after advancing
-            next_actor = _find_next_to_act(round_obj)
-            if not next_actor:
-                # No one needs to act
-                break
-            # If it's now human's turn, stop
-            if next_actor.name == session.human_name:
-                break
-        elif next_actor.name == session.human_name:
-            # Bot acted, now it's human's turn
-            break
-        # Otherwise, loop continues for another bot action if needed
+        # After advancing, return - let frontend timer handle next action
+        return
+    
+    # If it's now human's turn, we're done
+    if next_actor.name == session.human_name:
+        return
+    
+    # Otherwise, bot will need to act again, but that's for the NEXT bot_action call
+    # Don't loop - stop here and let the frontend timer trigger the next action
 
 
 @app.post("/start_game")
