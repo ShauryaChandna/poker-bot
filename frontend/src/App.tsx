@@ -30,6 +30,7 @@ type GameState = {
     raise?: { allowed: boolean, min: number, max: number } | null
   }
   big_blind?: number
+  hand_descriptions?: Record<string, string>
 }
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -54,6 +55,7 @@ export default function App() {
   const lastHandNumberRef = useRef<number | null>(null)
   const lastStreetRef = useRef<string | null>(null)
   const playerTimerStartRef = useRef<number | null>(null)
+  const botTimerStartRef = useRef<number | null>(null)
 
   const start = async () => {
     setError('')
@@ -107,12 +109,14 @@ export default function App() {
   const botAct = async () => {
     if (!sessionId) return
     try {
+      console.log('Calling bot_action endpoint...')
       const res = await fetch(`${API}/bot_action?session_id=${sessionId}`)
       if (!res.ok) {
         console.error('Bot action failed:', res.status, res.statusText)
         return
       }
       const data = await res.json()
+      console.log('Bot action completed, new state:', { awaiting_player: data.awaiting_player, street: data.street, action_log_length: data.action_log?.length })
       setState(data)
     } catch (e) {
       console.error('Bot action error:', e)
@@ -205,61 +209,114 @@ export default function App() {
       if (botTimerRef.current) {
         clearInterval(botTimerRef.current)
         botTimerRef.current = null
+        botTimerStartRef.current = null
       }
       return
     }
     
-    if (playerTimerRef.current) { clearInterval(playerTimerRef.current); playerTimerRef.current = null }
-    if (botTimerRef.current) { clearInterval(botTimerRef.current); botTimerRef.current = null }
+    if (!state?.awaiting_player) {
+      // Clear timers if no one is awaiting action
+      if (playerTimerRef.current) { clearInterval(playerTimerRef.current); playerTimerRef.current = null }
+      if (botTimerRef.current) { clearInterval(botTimerRef.current); botTimerRef.current = null }
+      return
+    }
     
-    if (!state?.awaiting_player) return
     const humanName = 'You'
     if (state.awaiting_player === humanName) {
-      const total = 20000
+      // Clear bot timer if it's running
+      if (botTimerRef.current) { clearInterval(botTimerRef.current); botTimerRef.current = null }
       
-      // If we have a saved start time from earlier in this hand, continue from there
-      // Otherwise, start fresh
-      if (playerTimerStartRef.current === null) {
-        const startAt = Date.now()
-        playerTimerStartRef.current = startAt
-        setPlayerTimeLeft(total)
+      // Only start/restart player timer if not already running
+      if (!playerTimerRef.current) {
+        const total = 20000
+        
+        // If we have a saved start time from earlier in this hand, continue from there
+        // Otherwise, start fresh
+        if (playerTimerStartRef.current === null) {
+          const startAt = Date.now()
+          playerTimerStartRef.current = startAt
+          setPlayerTimeLeft(total)
+        }
+        
+        playerTimerRef.current = setInterval(() => {
+          const startAt = playerTimerStartRef.current
+          if (!startAt) return
+          const left = Math.max(0, total - (Date.now() - startAt))
+          setPlayerTimeLeft(left)
+          if (left <= 0) {
+            clearInterval(playerTimerRef.current)
+            playerTimerRef.current = null
+            playerTimerStartRef.current = null
+            // Auto-action: use latest state from ref
+            const currentState = stateRef.current
+            if (currentState?.legal_actions?.check) {
+              act('check')
+            } else if (currentState?.legal_actions?.fold) {
+              act('fold')
+            } else if (currentState?.legal_actions?.call) {
+              act('call', currentState.current_bet)
+            }
+          }
+        }, 100)
+      }
+    } else {
+      // Bot's turn - clear player timer if running
+      if (playerTimerRef.current) { 
+        clearInterval(playerTimerRef.current)
+        playerTimerRef.current = null
+        playerTimerStartRef.current = null
       }
       
-      playerTimerRef.current = setInterval(() => {
-        const startAt = playerTimerStartRef.current
-        if (!startAt) return
-        const left = Math.max(0, total - (Date.now() - startAt))
-        setPlayerTimeLeft(left)
-        if (left <= 0) {
-          clearInterval(playerTimerRef.current)
-          playerTimerRef.current = null
-          playerTimerStartRef.current = null
-          // Auto-action: use latest state from ref
-          const currentState = stateRef.current
-          if (currentState?.legal_actions?.check) {
-            act('check')
-          } else if (currentState?.legal_actions?.fold) {
-            act('fold')
-          } else if (currentState?.legal_actions?.call) {
-            act('call', currentState.current_bet)
-          }
-        }
-      }, 100)
-    } else {
-      const total = 3000
-      const startAt = Date.now()
-      setBotTimeLeft(total)
-      botTimerRef.current = setInterval(() => {
-        const left = Math.max(0, total - (Date.now() - startAt))
-        setBotTimeLeft(left)
-        if (left <= 0) {
+      // Check if street changed - if so, reset bot timer even if running
+      const currentStreet = state?.street || null
+      const streetChanged = lastStreetRef.current !== null && lastStreetRef.current !== currentStreet
+      if (streetChanged) {
+        console.log(`Street changed from ${lastStreetRef.current} to ${currentStreet}, resetting bot timer`)
+        if (botTimerRef.current) {
           clearInterval(botTimerRef.current)
           botTimerRef.current = null
-          botAct()
+          botTimerStartRef.current = null
         }
-      }, 100)
+        lastStreetRef.current = currentStreet
+      } else if (lastStreetRef.current !== currentStreet) {
+        lastStreetRef.current = currentStreet
+      }
+      
+      // Only start bot timer if not already running (prevents restarting on state refresh)
+      if (!botTimerRef.current) {
+        const total = 3000
+        const startAt = Date.now()
+        botTimerStartRef.current = startAt
+        setBotTimeLeft(total)
+        console.log(`Bot timer starting for ${state.awaiting_player}, street: ${state.street}, hand: ${state.hand_number}`)
+        botTimerRef.current = setInterval(() => {
+          const startAtTime = botTimerStartRef.current
+          if (!startAtTime) {
+            console.warn('Bot timer running but startTime is null!')
+            return
+          }
+          const left = Math.max(0, total - (Date.now() - startAtTime))
+          setBotTimeLeft(left)
+          if (left <= 0) {
+            clearInterval(botTimerRef.current)
+            botTimerRef.current = null
+            botTimerStartRef.current = null
+            console.log('Bot timer expired, calling botAct()')
+            botAct()
+          }
+        }, 100)
+      }
+      // If timer already running, update display based on elapsed time
+      else if (botTimerStartRef.current) {
+        const total = 3000
+        const elapsed = Date.now() - botTimerStartRef.current
+        const remaining = Math.max(0, total - elapsed)
+        setBotTimeLeft(remaining)
+      } else {
+        console.warn(`Bot timer ref exists but startTime is null! Ref: ${botTimerRef.current}`)
+      }
     }
-  }, [state?.awaiting_player, state?.is_complete, isPaused])
+  }, [state?.awaiting_player, state?.is_complete, state?.street, isPaused])
 
   // Keep raise amount within current legal bounds and set sensible default
   useEffect(() => {
@@ -428,6 +485,24 @@ export default function App() {
       nextHandTimerRef.current = null
     }
     
+    // If game is resumed and hand is complete, start the timer if it's not already running
+    // This handles the case where game was paused during showdown and then resumed
+    if (!isPaused && state?.is_complete && !nextHandTimerRef.current && 
+        lastCompleteHandRef.current === state.hand_number) {
+      // Hand is complete, we've processed it, but timer isn't running (was paused)
+      // Start the timer now that we've resumed
+      const currentSessionId = sessionId
+      console.log(`Resuming: Starting 5-second timer for next hand (hand ${state.hand_number}, session: ${currentSessionId})`)
+      nextHandTimerRef.current = setTimeout(() => {
+        console.log('Timer fired, calling nextHandCallback...')
+        if (currentSessionId) {
+          nextHandCallback()
+        } else {
+          console.log('No session ID, skipping nextHandCallback')
+        }
+      }, 5000)
+    }
+    
     // Don't reset tracking here - let nextHandCallback reset it when starting a new hand
     // This prevents the tracking from being cleared prematurely
     
@@ -462,11 +537,14 @@ export default function App() {
     }
   }, [state?.hand_number])
 
-  // Check for new bot actions
+  // Check for new bot actions - show the MOST RECENT action, not the first one found
   useEffect(() => {
     if (!state?.action_log || !bot || state.action_log.length === 0) return
     
-    // Find the latest bot action we haven't shown yet
+    // Find the MOST RECENT bot action we haven't shown yet
+    // Start from the end and find the first bot action after our last shown index
+    let mostRecentAction: { action: string, index: number } | null = null
+    
     for (let i = state.action_log.length - 1; i > lastShownBotActionIndex.current; i--) {
       const line = state.action_log[i].toLowerCase()
       const botNameLower = bot.name.toLowerCase()
@@ -480,13 +558,24 @@ export default function App() {
         else if (line.includes(' checks')) action = 'Check'
         
         if (action) {
-          lastShownBotActionIndex.current = i
-          setShownBotAction(action)
-          // Clear after 1 second
-          setTimeout(() => setShownBotAction(null), 1000)
-          break
+          // Only store the most recent action
+          if (!mostRecentAction || i > mostRecentAction.index) {
+            mostRecentAction = { action, index: i }
+          }
         }
       }
+    }
+    
+    // Show the most recent action only
+    if (mostRecentAction) {
+      console.log(`Bot action detected: ${mostRecentAction.action} at index ${mostRecentAction.index}, line: "${state.action_log[mostRecentAction.index]}"`)
+      lastShownBotActionIndex.current = mostRecentAction.index
+      setShownBotAction(mostRecentAction.action)
+      // Clear after 1 second
+      setTimeout(() => {
+        setShownBotAction(null)
+        console.log(`Bot action pop-up cleared after 1 second`)
+      }, 1000)
     }
   }, [state?.action_log, bot])
 
@@ -623,6 +712,12 @@ export default function App() {
                     <div className="h-full bg-purple-400" style={{ width: `${Math.max(0, Math.min(100, 100 - (botTimeLeft/30)))}%` }} />
                   </div>
                   <div className="mt-2 text-sm">Stack: {formatAmount(bot.stack)}{getAmountSuffix()}</div>
+                  {/* Bot hand description - only at showdown */}
+                  {state.is_complete && state.hand_descriptions && state.hand_descriptions[bot.name] && (
+                    <div className="mt-1 text-xs text-purple-200 opacity-90">
+                      {state.hand_descriptions[bot.name]}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -679,68 +774,76 @@ export default function App() {
                       </motion.div>
                     )}
                   </div>
+                  {/* Human hand description - from flop onwards */}
+                  {state.hand_descriptions && state.hand_descriptions[human.name] && (
+                    <div className="mt-1 text-xs text-blue-200 opacity-90">
+                      {state.hand_descriptions[human.name]}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="fixed bottom-4 right-4 bg-green-800 p-4 rounded space-x-2 flex items-center shadow-lg border border-green-700">
-              {state.legal_actions?.raise?.allowed ? (
-                <div className="flex items-center space-x-2 mr-4">
-                  <button
-                    className={`bg-gray-700 px-3 py-1 rounded text-sm ${!isPercentAllowed(0.33) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => isPercentAllowed(0.33) && setPercentOfPot(0.33)}
-                    disabled={!isPercentAllowed(0.33)}
-                  >
-                    33%
-                  </button>
-                  <button
-                    className={`bg-gray-700 px-3 py-1 rounded text-sm ${!isPercentAllowed(0.5) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => isPercentAllowed(0.5) && setPercentOfPot(0.5)}
-                    disabled={!isPercentAllowed(0.5)}
-                  >
-                    50%
-                  </button>
-                  <button
-                    className={`bg-gray-700 px-3 py-1 rounded text-sm ${!isPercentAllowed(1) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => isPercentAllowed(1) && setPercentOfPot(1)}
-                    disabled={!isPercentAllowed(1)}
-                  >
-                    100%
-                  </button>
-                  <div className="flex items-center space-x-2 ml-2">
-                    <div className="bg-white text-black px-3 py-1 rounded">{formatAmount(raiseTo || 0)}{getAmountSuffix()}</div>
-                    <input
-                      type="range"
-                      className="w-40"
-                      min={state.legal_actions.raise.min}
-                      max={state.legal_actions.raise.max}
-                      step={1}
-                      value={raiseTo}
-                      onChange={(e) => setRaiseTo(clampRaise(parseInt(e.target.value || '0')))}
-                    />
+            {!isPaused && state?.legal_actions && (
+              <div className="fixed bottom-4 right-4 bg-green-800 p-4 rounded space-x-2 flex items-center shadow-lg border border-green-700">
+                {state.legal_actions?.raise?.allowed ? (
+                  <div className="flex items-center space-x-2 mr-4">
+                    <button
+                      className={`bg-gray-700 px-3 py-1 rounded text-sm ${!isPercentAllowed(0.33) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => isPercentAllowed(0.33) && setPercentOfPot(0.33)}
+                      disabled={!isPercentAllowed(0.33)}
+                    >
+                      33%
+                    </button>
+                    <button
+                      className={`bg-gray-700 px-3 py-1 rounded text-sm ${!isPercentAllowed(0.5) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => isPercentAllowed(0.5) && setPercentOfPot(0.5)}
+                      disabled={!isPercentAllowed(0.5)}
+                    >
+                      50%
+                    </button>
+                    <button
+                      className={`bg-gray-700 px-3 py-1 rounded text-sm ${!isPercentAllowed(1) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => isPercentAllowed(1) && setPercentOfPot(1)}
+                      disabled={!isPercentAllowed(1)}
+                    >
+                      100%
+                    </button>
+                    <div className="flex items-center space-x-2 ml-2">
+                      <div className="bg-white text-black px-3 py-1 rounded">{formatAmount(raiseTo || 0)}{getAmountSuffix()}</div>
+                      <input
+                        type="range"
+                        className="w-40"
+                        min={state.legal_actions.raise.min}
+                        max={state.legal_actions.raise.max}
+                        step={1}
+                        value={raiseTo}
+                        onChange={(e) => setRaiseTo(clampRaise(parseInt(e.target.value || '0')))}
+                      />
+                    </div>
                   </div>
-                </div>
-              ) : null}
-              {state.legal_actions?.fold ? (
+                ) : null}
+                {state.legal_actions?.fold ? (
               <button className="bg-red-600 px-3 py-2 rounded" onClick={() => act('fold')}>Fold</button>
-              ) : null}
-              {state.legal_actions?.check ? (
+                ) : null}
+                {state.legal_actions?.check ? (
               <button className="bg-gray-600 px-3 py-2 rounded" onClick={() => act('check')}>Check</button>
-              ) : null}
-              {state.legal_actions?.call ? (
+                ) : null}
+                {state.legal_actions?.call ? (
               <button className="bg-yellow-600 px-3 py-2 rounded" onClick={() => act('call', state.current_bet)}>Call</button>
-              ) : null}
-              {state.legal_actions?.raise?.allowed ? (
-                <button
-                  className="bg-blue-600 px-3 py-2 rounded"
-                  onClick={() => act('raise', clampRaise(raiseTo || 0))}
-                >
-                  Raise
-                </button>
-              ) : null}
-              {/* Removed Bot Act button */}
+                ) : null}
+                {state.legal_actions?.raise?.allowed ? (
+                  <button
+                    className="bg-blue-600 px-3 py-2 rounded"
+                    onClick={() => act('raise', clampRaise(raiseTo || 0))}
+                  >
+                    Raise
+                  </button>
+                ) : null}
+                {/* Removed Bot Act button */}
               {error && <div className="text-red-300 text-sm ml-3">{error}</div>}
             </div>
+            )}
           </div>
                   )}
                 </div>
