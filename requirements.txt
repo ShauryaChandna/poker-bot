@@ -16,7 +16,7 @@ mypy>=0.990            # For type checking
 # uvicorn>=0.20.0      # For ASGI server
 # websockets>=10.0     # For real-time communication
 
-# Optional dependencies for AI/ML (future)
-# numpy>=1.24.0        # For numerical operations
-# torch>=2.0.0         # For deep learning models
+# Dependencies for AI/ML (Phase 2+)
+numpy>=1.24.0          # For numerical operations and Monte Carlo simulations
+# torch>=2.0.0         # For deep learning models (Phase 4)
 
