@@ -18,5 +18,6 @@ mypy>=0.990            # For type checking
 
 # Dependencies for AI/ML (Phase 2+)
 numpy>=1.24.0          # For numerical operations and Monte Carlo simulations
+scikit-learn>=1.3.0    # For ML models in opponent modeling (Phase 3)
 # torch>=2.0.0         # For deep learning models (Phase 4)
 

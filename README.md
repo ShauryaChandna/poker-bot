@@ -14,15 +14,18 @@ Build a modular poker AI focused on:
 
 | Component | Status | Lines of Code | Tests |
 |-----------|--------|---------------|-------|
-| Core Engine | ✅ Complete | ~1,500 | ✓ |
-| Simulation Layer | ✅ Complete | ~1,000 | 69/69 ✓ |
+| Core Engine (Phase 1) | ✅ Complete | ~1,500 | ✓ |
+| Simulation Layer (Phase 2) | ✅ Complete | ~1,000 | 69/69 ✓ |
 | Web Interface | ✅ Complete | ~1,500 | - |
-| Opponent Modeling | 🔄 Next | TBD | TBD |
-| Equity Strategy | 📋 Planned | ~500 | TBD |
-| CFR/RL Training | 📋 Future | TBD | TBD |
+| **Opponent Modeling (Phase 3)** | ✅ **Complete** | **~2,800** | **44/44 ✓** |
+| **ML Range Predictor** | ✅ **Trained** | **10k samples** | **87.3% acc** |
+| Bot Integration (Phase 3.5) | 📋 Next | ~500 | TBD |
+| CFR/RL Training (Phase 4) | 📋 Future | TBD | TBD |
 
-**Current Bot:** Check/call station (exploitable)  
-**Next Milestone:** Smart bot with equity-based decisions  
+**Phase 1-3 Complete:** 5,600+ lines, 113 tests passing ✅  
+**Trained Model:** RandomForest (10k equity-based samples, 87.3% validation accuracy) ✅  
+**Current Capabilities:** Equity calculation + Opponent modeling (rule-based & ML) + HU-calibrated predictions  
+**Next Milestone:** Integrate opponent modeling with bot for intelligent decision-making  
 **End Goal:** Near-optimal play through CFR/RL training
 
 Future expansions (multiplayer, rule variants) will be added after AI reaches production-stable.
@@ -110,8 +113,8 @@ PotLimitPokerBot
 |-------|--------|-------------|------------------|
 | **1️⃣ Core Engine** | ✅ **COMPLETE** | Deck, dealing, pot-limit logic, state management | 🤖 Can play by rules |
 | **2️⃣ Simulation Layer** | ✅ **COMPLETE** | Monte Carlo equity calculator with caching | 🧮 Can calculate odds |
-| **3️⃣ Opponent Modeling** | 🔄 **IN PROGRESS** | Player profiling, range estimation, ML predictor | 👀 Can track opponents |
-| **3.5 Equity Strategy** | 📋 **NEXT** | Equity-based decision making (first smart bot!) | 🧠 Can think strategically |
+| **3️⃣ Opponent Modeling** | ✅ **COMPLETE** | Player profiling, ML range predictor (87.3% acc), HU-calibrated | 👀 Can predict ranges |
+| **3.5 Bot Integration** | 📋 **NEXT** | Integrate opponent modeling for intelligent decisions | 🧠 Can think strategically |
 | **4️⃣ CFR + RL Training** | 📋 Planned | Self-learning AI, optimal strategy training | 🤖🧠 Plays near-optimally |
 | **5️⃣ Web Interface** | ✅ **COMPLETE** | FastAPI + React for real-time gameplay | 🎮 Playable now |
 | **6️⃣ Deployment** | 📋 Planned | Production deployment, monitoring, CI/CD | 🚀 Scale to users |
@@ -127,51 +130,194 @@ The bot currently uses a naive strategy (`backend/app.py` lines 356-384):
 
 ---
 
-## 🚧 Upcoming: Phase 3 - Opponent Modeling
+## ✅ Phase 3 Complete: Opponent Modeling + ML Predictor
 
-Build infrastructure to track opponent behavior and estimate hand ranges dynamically.
+Built a complete opponent modeling system that tracks player behavior and predicts hand ranges using both rule-based heuristics and machine learning.
 
-### 📋 Planned Components
+### 📦 Implementation Details
 
-**3.1 Player Profiling (`opponent_modeling/player_profile.py`)**
-- Track statistics: VPIP, PFR, Aggression Factor, Fold%, 3-bet%
-- Identify player archetypes (Tight-Aggressive, Loose-Passive, etc.)
-- Persist stats across hands in session
+**Files Implemented:**
+- `pypokerengine/opponent_modeling/player_profile.py` (280 lines)
+  - Tracks VPIP, PFR, Aggression Factor, Fold-to-Cbet, 3-Bet%
+  - Classifies players into archetypes (TAG, LAG, Nit, Calling Station)
+  - **Heads-up calibrated** (VPIP 48-72%, PFR 25-44%)
+  
+- `pypokerengine/opponent_modeling/hand_history.py` (300 lines)
+  - Records all actions across all streets
+  - Query interface for historical analysis
+  - Multi-hand lookback support
+  
+- `pypokerengine/opponent_modeling/range_estimator.py` (350 lines)
+  - Rule-based range estimation (works immediately!)
+  - Archetype-specific templates for HU play
+  - Preflop and postflop range narrowing
+  
+- `pypokerengine/opponent_modeling/features.py` (280 lines)
+  - Extracts 32+ features for ML models
+  - Player stats, board texture, pot odds, SPR
+  - Numpy-ready feature vectors
+  
+- `pypokerengine/opponent_modeling/range_predictor.py` (400 lines)
+  - sklearn RandomForest model infrastructure
+  - 6 range categories (ultra-tight → wide)
+  - Hybrid approach (rules + ML)
 
-**3.2 Hand History Tracking (`opponent_modeling/hand_history.py`)**
-- Record all actions: bets, raises, folds, calls
-- Store showdown information when available
-- Enable post-game analysis
+**Training Pipeline:**
+- `scripts/generate_training_data.py` (500 lines)
+  - **🌟 KEY INNOVATION**: Uses REAL equity calculations, not random ranges!
+  - 4 HU archetypes with equity thresholds
+  - Generated 10,000 samples in ~50 minutes
+  
+- `scripts/train_range_model.py` (200 lines)
+  - RandomForest training with evaluation
+  - Feature importance analysis
+  - Model serialization
 
-**3.3 Rule-Based Range Estimator (`opponent_modeling/range_estimator.py`)**
-- Hand-crafted heuristics for range estimation
-- E.g., "Tight player raises preflop → JJ+,AQs+"
-- Works immediately (no training required)
+**Testing:**
+- `tests/opponent_modeling/` - 44 comprehensive tests (100% passing)
 
-**3.4 ML Range Predictor (`opponent_modeling/range_predictor.py`)**
-- Train model on equity-based synthetic data
-- Input: Player stats, action, street, board texture
-- Output: Probability distribution over hand ranges
-- Start with sklearn, upgrade to PyTorch if needed
+### 🎯 Key Features
 
-**3.5 Synthetic Data Generator (`scripts/generate_training_data.py`)**
-- **CRITICAL**: Use equity calculations, not random assignments!
-- Generate realistic ranges based on equity thresholds
-- Example: For tight-aggressive, only include hands with 55%+ equity in raising range
-- Creates 10k+ training examples automatically
+- **Player Profiling**: Track 15+ statistics per opponent
+- **Range Estimation**: Both rule-based (instant) and ML (87.3% accuracy)
+- **Equity-Based Training**: Ranges grounded in poker mathematics, not arbitrary rules
+- **HU-Calibrated**: Tuned for heads-up play (VPIP 48-72% vs 6-max's 18-45%)
+- **Fast Predictions**: < 5ms per prediction
+- **Hybrid System**: Uses ML when confident (>70%), falls back to rules otherwise
 
-### 🎯 Expected Outcomes
+### 🤖 Trained Model Performance
 
-After Phase 3:
-- Bot can track: "Opponent has raised 3/10 hands preflop (PFR=30%)"
-- Bot can estimate: "Given their stats + this raise → likely has JJ+,AQs+"
-- Foundation ready for Phase 3.5 decision-making
+**Model:** RandomForest with 100 trees  
+**Training Data:** 10,000 equity-based samples (4 HU archetypes)  
+**Accuracy:** 87.3% validation (88.1% training)  
+**Size:** 3.7 MB  
+**Speed:** < 5ms per prediction  
+
+**Top Features (What the model learned):**
+1. Action taken (call, bet, check, raise, fold) - 55%
+2. Street (preflop, flop, turn, river) - 15%
+3. Bet sizing - 7%
+4. Board texture - 5%
+
+**Range Categories Predicted:**
+- Ultra-tight: QQ+,AKs
+- Tight: JJ+,AQs+,AKo
+- Tight-medium: TT+,ATs+,AJo+,KQs
+- Medium: 99+,A9s+,ATo+,KJs+,KQo
+- Medium-wide: 77+,A2s+,A9o+,KTs+,QJs+
+- Wide: 55+,A2s+,A5o+,K5s+,K9o+,QTs+
+
+### 💡 How It Works
+
+```python
+from pypokerengine.opponent_modeling import (
+    PlayerProfile, RangePredictor, EquityCalculator
+)
+
+# 1. Track opponent
+profile = PlayerProfile(player_id="villain")
+profile.update_preflop_action(action="raise", is_raise=True)
+# After 100 hands: VPIP=58%, PFR=38% → "Balanced HU player"
+
+# 2. Predict their range
+predictor = RangePredictor.load("models/range_model.pkl")
+prediction = predictor.predict(profile, action="raise", street=PREFLOP)
+# → Range: "JJ+,AQs+,AKo" (Confidence: 99.4%)
+
+# 3. Calculate your equity vs their range
+calc = EquityCalculator()
+equity = calc.calculate_equity(
+    hero_hand="AhKh",
+    villain_range=prediction.to_hand_range(),
+    board=board
+)
+# → Your AK has 45% equity vs their range
+
+# 4. Make intelligent decision
+if equity > 0.55:
+    return "raise"  # Value bet
+elif equity > pot_odds:
+    return "call"   # Profitable
+else:
+    return "fold"   # Not enough equity
+```
+
+### 🎯 Outcomes Achieved
+
+✅ Bot can track: "Opponent has 58% VPIP, 38% PFR → Balanced HU player"  
+✅ Bot can predict: "Given their stats + this raise → JJ+,AQs+,AKo (99% confident)"  
+✅ Bot can calculate: "My AK has 45% equity vs their range"  
+✅ Foundation ready for Phase 3.5 intelligent decision-making  
+
+### 📊 Data Quality
+
+**Training Data Characteristics:**
+- 10,000 samples balanced across 4 HU archetypes
+- Each sample: 32 features + equity value + range category
+- Equity mean: 0.498 (realistic distribution)
+- Action distribution: 34% check, 22% bet, 17% call, 15% raise, 12% fold
+- All based on **real equity calculations** (not random!)
+
+**HU Archetypes (Calibrated for 2-player poker):**
+- HU Tight-Aggressive: VPIP=48%, PFR=32%, AF=3.0
+- HU Balanced: VPIP=58%, PFR=38%, AF=2.5  
+- HU Loose-Aggressive: VPIP=68%, PFR=44%, AF=2.8
+- HU Calling Station: VPIP=72%, PFR=25%, AF=1.3
+
+### Quick Demo
+
+```bash
+# Run comprehensive demo
+python examples/opponent_modeling_demo.py
+
+# Or test specific components
+python -c "
+from pypokerengine.opponent_modeling import PlayerProfile
+profile = PlayerProfile('test', hands_played=100)
+profile.vpip_count = 58
+profile.pfr_count = 38
+print(f'Archetype: {profile.get_archetype()}')
+"
+```
+
+### 📁 Files Structure
+
+```
+pypokerengine/opponent_modeling/
+├── __init__.py
+├── player_profile.py      # Track opponent stats
+├── hand_history.py        # Record action sequences
+├── range_estimator.py     # Rule-based estimation
+├── features.py            # ML feature engineering
+└── range_predictor.py     # ML model + hybrid approach
+
+scripts/
+├── generate_training_data.py  # Equity-based data generator
+└── train_range_model.py       # Model training
+
+models/
+├── range_model.pkl            # Trained HU model (primary)
+└── archive/
+    └── range_model_6max.pkl   # Old 6-max model (reference)
+
+data/
+├── X_train.npy               # 10,000 training samples
+├── y_train.npy               # Labels
+├── training_data_raw.json    # Full details (6.3 MB)
+└── archive/
+    └── training_data_6max.json  # Old 6-max data
+
+tests/opponent_modeling/      # 44 tests (100% passing)
+examples/opponent_modeling_demo.py  # Complete demo
+```
 
 ---
 
-## 🚧 Upcoming: Phase 3.5 - Equity-Based Strategy
+## 🚧 Next: Phase 3.5 - Bot Integration
 
-Transform the bot from "check/call station" to intelligent player using equity + opponent modeling.
+Transform the bot from "check/call station" to intelligent player by integrating equity calculations + opponent modeling.
+
+### 📋 What Needs to Be Built
 
 ### 📋 Planned Components
 
@@ -209,14 +355,40 @@ class EquityBasedStrategy:
 - **Bluff**: Occasionally with medium equity (15% frequency)
 - **Fold**: Insufficient equity
 
+### 📝 Integration Checklist
+
+**What's Ready to Use:**
+- ✅ `PlayerProfile` - Track opponent stats across hands
+- ✅ `HandHistory` - Record all actions
+- ✅ `RangePredictor` - Trained ML model (87.3% accuracy)
+- ✅ `EquityCalculator` - Fast equity vs ranges
+- ✅ `HybridRangeEstimator` - Combined rules + ML
+
+**What Needs Integration:**
+- [ ] Add `PlayerProfile` tracking to `backend/app.py`
+- [ ] Update opponent profiles after each action
+- [ ] Replace check/call bot with equity-based strategy
+- [ ] Add SQLite for persistent opponent tracking (optional)
+- [ ] Integrate range prediction in decision-making
+- [ ] Calculate equity vs predicted ranges
+- [ ] Implement intelligent bet sizing
+
+**Integration Points:**
+1. **After opponent acts**: Update their `PlayerProfile`
+2. **When bot decides**: 
+   - Predict opponent range
+   - Calculate equity vs range
+   - Make decision based on equity + pot odds
+3. **After hand ends**: Store hand history, update stats
+
 ### 🎯 Expected Outcomes
 
 After Phase 3.5:
-- Bot makes +EV decisions based on equity
-- Adapts to opponent tendencies (tight vs loose)
-- Can value bet, bluff catch, and fold appropriately
-- **First truly playable intelligent bot!**
-- Bot intelligence: **6/10** (competent player level)
+- ✅ Bot makes +EV decisions based on equity
+- ✅ Adapts to opponent tendencies (tight vs loose)
+- ✅ Can value bet, bluff catch, and fold appropriately
+- ✅ **First truly playable intelligent bot!**
+- ✅ Bot intelligence: **6/10** (competent player level)
 
 ---
 
@@ -520,9 +692,10 @@ pokerbot/
 
 **Dependencies:**
 - `numpy>=1.24.0` - For Monte Carlo optimizations (Phase 2)
+- `scikit-learn>=1.3.0` - For ML models in opponent modeling (Phase 3)
 - `fastapi` + `uvicorn` - Backend API (Phase 5)  
 - `pytest` - Testing infrastructure
-- Future: `torch`, `sklearn`, `pandas` (Phase 3-4)
+- Future: `torch`, `pandas` (Phase 4)
 
 ---
 
