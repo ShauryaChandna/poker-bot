@@ -167,28 +167,28 @@ The system classifies players into archetypes:
 ### Tight-Aggressive (TAG)
 - VPIP: ~20%, PFR: ~18%, AF: ~3.0
 - Plays few hands but bets aggressively
-- **Most profitable archetype**
+- Most profitable archetype
 
 ### Tight-Passive (Nit)
 - VPIP: ~18%, PFR: ~8%, AF: ~1.5
 - Plays very few hands, rarely raises
-- **Easiest to exploit**
+- Easiest to exploit
 
 ### Loose-Aggressive (LAG)
 - VPIP: ~40%, PFR: ~32%, AF: ~2.5
 - Plays many hands aggressively
-- **High variance**
+- High variance
 
 ### Loose-Passive (Calling Station)
 - VPIP: ~45%, PFR: ~12%, AF: ~1.2
 - Plays many hands but rarely raises
-- **Exploitable with value bets**
+- Exploitable with value bets
 
 ## Equity-Based Data Generation
 
 ### Why Equity-Based?
 
-Traditional opponent modeling uses **random or hand-picked** range assignments, which don't reflect actual poker strategy. Our approach uses **real equity calculations**:
+Traditional opponent modeling uses random or hand-picked range assignments, which don't reflect actual poker strategy. Our approach uses real equity calculations:
 
 ```python
 # For each hand in each scenario:
@@ -207,11 +207,11 @@ else:
 
 ### Benefits
 
-1. **Realistic ranges** - Grounded in poker mathematics
-2. **Archetype-specific** - Different thresholds for TAG vs LAG
-3. **Pot odds aware** - Postflop decisions consider pot odds
-4. **Board texture** - Adjusts for wet vs dry boards
-5. **Scalable** - Can generate unlimited training data
+1. Realistic ranges - Grounded in poker mathematics
+2. Archetype-specific - Different thresholds for TAG vs LAG
+3. Pot odds aware - Postflop decisions consider pot odds
+4. Board texture - Adjusts for wet vs dry boards
+5. Scalable - Can generate unlimited training data
 
 ## ML Model Architecture
 
@@ -243,13 +243,13 @@ else:
 ### Output Classes
 
 7 range categories from ultra-tight to very-wide:
-- **ultra_tight**: Top 5% (QQ+, AKs)
-- **tight**: Top 10% (JJ+, AQs+, AKo)
-- **tight_medium**: Top 15%
-- **medium**: Top 20%
-- **medium_wide**: Top 30%
-- **wide**: Top 40%
-- **very_wide**: Top 50%
+- ultra_tight: Top 5% (QQ+, AKs)
+- tight: Top 10% (JJ+, AQs+, AKo)
+- tight_medium: Top 15%
+- medium: Top 20%
+- medium_wide: Top 30%
+- wide: Top 40%
+- very_wide: Top 50%
 
 ### Model Types Supported
 

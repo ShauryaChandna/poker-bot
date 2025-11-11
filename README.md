@@ -1,32 +1,32 @@
-#  PotLimitPokerBot: Heads-Up Poker AI
+# PotLimitPokerBot: Heads-Up Poker AI
 
-> **🎯 100% Custom Built Engine** - Every line written from scratch, zero external poker libraries!
+> 100% Custom Built Engine - Every line written from scratch, zero external poker libraries
 
-##  Project Goal
+## Project Goal
 
 Build a modular poker AI focused on:
 
--  Bot-vs-Human gameplay for Heads-Up Pot-Limit Hold'em
--  Self-learning AI using Counterfactual Regret Minimization (CFR) and Reinforcement Learning (RL)
--  Interactive web interface built with FastAPI + React for real-time play and strategy visualization
+- Bot-vs-Human gameplay for Heads-Up Pot-Limit Hold'em
+- Self-learning AI using Counterfactual Regret Minimization (CFR) and Reinforcement Learning (RL)
+- Interactive web interface built with FastAPI + React for real-time play and strategy visualization
 
-## 📊 Project Status
+## Project Status
 
 | Component | Status | Lines of Code | Tests |
 |-----------|--------|---------------|-------|
-| Core Engine (Phase 1) | ✅ Complete | ~1,500 | ✓ |
-| Simulation Layer (Phase 2) | ✅ Complete | ~1,000 | 69/69 ✓ |
-| Web Interface | ✅ Complete | ~1,500 | - |
-| **Opponent Modeling (Phase 3)** | ✅ **Complete** | **~2,800** | **44/44 ✓** |
-| **ML Range Predictor** | ✅ **Trained** | **10k samples** | **87.3% acc** |
-| Bot Integration (Phase 3.5) | 📋 Next | ~500 | TBD |
-| CFR/RL Training (Phase 4) | 📋 Future | TBD | TBD |
+| Core Engine (Phase 1) | Complete | ~1,500 | Pass |
+| Simulation Layer (Phase 2) | Complete | ~1,000 | 69/69 Pass |
+| Web Interface | Complete | ~1,500 | - |
+| Opponent Modeling (Phase 3) | Complete | ~2,800 | 44/44 Pass |
+| ML Range Predictor | Trained | 10k samples | 87.3% acc |
+| Bot Integration (Phase 3.5) | In Progress | ~500 | TBD |
+| CFR/RL Training (Phase 4) | Planned | TBD | TBD |
 
-**Phase 1-3 Complete:** 5,600+ lines, 113 tests passing ✅  
-**Trained Model:** RandomForest (10k equity-based samples, 87.3% validation accuracy) ✅  
-**Current Capabilities:** Equity calculation + Opponent modeling (rule-based & ML) + HU-calibrated predictions  
-**Next Milestone:** Integrate opponent modeling with bot for intelligent decision-making  
-**End Goal:** Near-optimal play through CFR/RL training
+Phase 1-3 Complete: 5,600+ lines, 113 tests passing  
+Trained Model: RandomForest (10k equity-based samples, 87.3% validation accuracy)  
+Current Capabilities: Equity calculation + Opponent modeling (rule-based & ML) + HU-calibrated predictions  
+Next Milestone: Integrate opponent modeling with bot for intelligent decision-making  
+End Goal: Near-optimal play through CFR/RL training
 
 Future expansions (multiplayer, rule variants) will be added after AI reaches production-stable.
 
@@ -64,77 +64,78 @@ The AI learns through a hybrid of CFR and RL with opponent modeling and equity s
 
 ---
 
-##  System Overview
-PotLimitPokerBot
-│
-├── 1️. Core Engine
-│   ├── Cards, deck, and dealing logic
-│   ├── Pot-limit betting and validation
-│   ├── Game state management (stacks, pot, blinds)
-│   └── Heads-Up round flow
-│
-├── 2️. Simulation Layer
-│   ├── Monte Carlo rollouts
-│   ├── Hand equity and range evaluation
-│   └── Self-play equity approximation
-│
-├── 3️. Intelligence Layer (AI)
-│   ├── CFR implementation
-│   ├── RL integration (PPO / A2C)
-│   ├── Self-play training loop
-│   └── Opponent adaptation
-│
-├── 4️. Opponent Modeling
-│   ├── Player profiling (VPIP, PFR, AF)
-│   ├── Bayesian hand range inference
-│   └── Real-time behavioral adjustments
-│
-├── 5️. Web Layer
-│   ├── FastAPI backend (game state, sockets, REST endpoints)
-│   └── React frontend (table UI, decision visualizations)
-│
-├── 6️. Data & Persistence
-│   ├── Hand histories
-│   ├── Model checkpoints
-│   ├── Player logs
-│   └── Experiment tracking (MLflow / W&B)
-│
-└── 7️. Deployment Layer
-├── Dockerized services
-├── Cloud configs (AWS / Render / GCP)
-└── Monitoring & CI/CD
+## System Overview
+
+**PotLimitPokerBot Architecture**
+
+1. Core Engine
+   - Cards, deck, and dealing logic
+   - Pot-limit betting and validation
+   - Game state management (stacks, pot, blinds)
+   - Heads-Up round flow
+
+2. Simulation Layer
+   - Monte Carlo rollouts
+   - Hand equity and range evaluation
+   - Self-play equity approximation
+
+3. Intelligence Layer (AI)
+   - CFR implementation
+   - RL integration (PPO / A2C)
+   - Self-play training loop
+   - Opponent adaptation
+
+4. Opponent Modeling
+   - Player profiling (VPIP, PFR, AF)
+   - Bayesian hand range inference
+   - Real-time behavioral adjustments
+
+5. Web Layer
+   - FastAPI backend (game state, sockets, REST endpoints)
+   - React frontend (table UI, decision visualizations)
+
+6. Data & Persistence
+   - Hand histories
+   - Model checkpoints
+   - Player logs
+   - Experiment tracking (MLflow / W&B)
+
+7. Deployment Layer
+   - Dockerized services
+   - Cloud configs (AWS / Render / GCP)
+   - Monitoring & CI/CD
 
 
 ---
 
-## 🧪 Development Phases
+## Development Phases
 
 | Phase | Status | Description | Bot Intelligence |
 |-------|--------|-------------|------------------|
-| **1️⃣ Core Engine** | ✅ **COMPLETE** | Deck, dealing, pot-limit logic, state management | 🤖 Can play by rules |
-| **2️⃣ Simulation Layer** | ✅ **COMPLETE** | Monte Carlo equity calculator with caching | 🧮 Can calculate odds |
-| **3️⃣ Opponent Modeling** | ✅ **COMPLETE** | Player profiling, ML range predictor (87.3% acc), HU-calibrated | 👀 Can predict ranges |
-| **3.5 Bot Integration** | 📋 **NEXT** | Integrate opponent modeling for intelligent decisions | 🧠 Can think strategically |
-| **4️⃣ CFR + RL Training** | 📋 Planned | Self-learning AI, optimal strategy training | 🤖🧠 Plays near-optimally |
-| **5️⃣ Web Interface** | ✅ **COMPLETE** | FastAPI + React for real-time gameplay | 🎮 Playable now |
-| **6️⃣ Deployment** | 📋 Planned | Production deployment, monitoring, CI/CD | 🚀 Scale to users |
+| 1. Core Engine | Complete | Deck, dealing, pot-limit logic, state management | Can play by rules |
+| 2. Simulation Layer | Complete | Monte Carlo equity calculator with caching | Can calculate odds |
+| 3. Opponent Modeling | Complete | Player profiling, ML range predictor (87.3% acc), HU-calibrated | Can predict ranges |
+| 3.5 Bot Integration | In Progress | Integrate opponent modeling for intelligent decisions | Can think strategically |
+| 4. CFR + RL Training | Planned | Self-learning AI, optimal strategy training | Plays near-optimally |
+| 5. Web Interface | Complete | FastAPI + React for real-time gameplay | Playable now |
+| 6. Deployment | Planned | Production deployment, monitoring, CI/CD | Scale to users |
 
-### Current Bot Status: 🤖 **Check/Call Station (Exploitable)**
+### Current Bot Status: Check/Call Station (Exploitable)
 The bot currently uses a naive strategy (`backend/app.py` lines 356-384):
 - Always checks if possible
 - Always calls if can't check  
 - **Never raises, never bluffs**
 - Doesn't consider hand strength or opponent behavior
 
-**Phase 3.5 will transform this into an intelligent player that uses equity calculations and opponent modeling!**
+Phase 3.5 will transform this into an intelligent player that uses equity calculations and opponent modeling.
 
 ---
 
-## ✅ Phase 3 Complete: Opponent Modeling + ML Predictor
+## Phase 3 Complete: Opponent Modeling + ML Predictor
 
 Built a complete opponent modeling system that tracks player behavior and predicts hand ranges using both rule-based heuristics and machine learning.
 
-### 📦 Implementation Details
+### Implementation Details
 
 **Files Implemented:**
 - `pypokerengine/opponent_modeling/player_profile.py` (280 lines)
@@ -164,7 +165,7 @@ Built a complete opponent modeling system that tracks player behavior and predic
 
 **Training Pipeline:**
 - `scripts/generate_training_data.py` (500 lines)
-  - **🌟 KEY INNOVATION**: Uses REAL equity calculations, not random ranges!
+  - Uses real equity calculations (not random ranges)
   - 4 HU archetypes with equity thresholds
   - Generated 10,000 samples in ~50 minutes
   
@@ -176,7 +177,7 @@ Built a complete opponent modeling system that tracks player behavior and predic
 **Testing:**
 - `tests/opponent_modeling/` - 44 comprehensive tests (100% passing)
 
-### 🎯 Key Features
+### Key Features
 
 - **Player Profiling**: Track 15+ statistics per opponent
 - **Range Estimation**: Both rule-based (instant) and ML (87.3% accuracy)
@@ -185,7 +186,7 @@ Built a complete opponent modeling system that tracks player behavior and predic
 - **Fast Predictions**: < 5ms per prediction
 - **Hybrid System**: Uses ML when confident (>70%), falls back to rules otherwise
 
-### 🤖 Trained Model Performance
+### Trained Model Performance
 
 **Model:** RandomForest with 100 trees  
 **Training Data:** 10,000 equity-based samples (4 HU archetypes)  
@@ -207,7 +208,7 @@ Built a complete opponent modeling system that tracks player behavior and predic
 - Medium-wide: 77+,A2s+,A9o+,KTs+,QJs+
 - Wide: 55+,A2s+,A5o+,K5s+,K9o+,QTs+
 
-### 💡 How It Works
+### How It Works
 
 ```python
 from pypokerengine.opponent_modeling import (
@@ -242,14 +243,14 @@ else:
     return "fold"   # Not enough equity
 ```
 
-### 🎯 Outcomes Achieved
+### Outcomes Achieved
 
-✅ Bot can track: "Opponent has 58% VPIP, 38% PFR → Balanced HU player"  
-✅ Bot can predict: "Given their stats + this raise → JJ+,AQs+,AKo (99% confident)"  
-✅ Bot can calculate: "My AK has 45% equity vs their range"  
-✅ Foundation ready for Phase 3.5 intelligent decision-making  
+- Bot can track: "Opponent has 58% VPIP, 38% PFR → Balanced HU player"  
+- Bot can predict: "Given their stats + this raise → JJ+,AQs+,AKo (99% confident)"  
+- Bot can calculate: "My AK has 45% equity vs their range"  
+- Foundation ready for Phase 3.5 intelligent decision-making  
 
-### 📊 Data Quality
+### Data Quality
 
 **Training Data Characteristics:**
 - 10,000 samples balanced across 4 HU archetypes
@@ -313,13 +314,13 @@ examples/opponent_modeling_demo.py  # Complete demo
 
 ---
 
-## 🚧 Next: Phase 3.5 - Bot Integration
+## Next: Phase 3.5 - Bot Integration
 
 Transform the bot from "check/call station" to intelligent player by integrating equity calculations + opponent modeling.
 
-### 📋 What Needs to Be Built
+### What Needs to Be Built
 
-### 📋 Planned Components
+### Planned Components
 
 **Strategy Module (`strategy/equity_strategy.py`)**
 ```python
@@ -355,14 +356,14 @@ class EquityBasedStrategy:
 - **Bluff**: Occasionally with medium equity (15% frequency)
 - **Fold**: Insufficient equity
 
-### 📝 Integration Checklist
+### Integration Checklist
 
 **What's Ready to Use:**
-- ✅ `PlayerProfile` - Track opponent stats across hands
-- ✅ `HandHistory` - Record all actions
-- ✅ `RangePredictor` - Trained ML model (87.3% accuracy)
-- ✅ `EquityCalculator` - Fast equity vs ranges
-- ✅ `HybridRangeEstimator` - Combined rules + ML
+- `PlayerProfile` - Track opponent stats across hands
+- `HandHistory` - Record all actions
+- `RangePredictor` - Trained ML model (87.3% accuracy)
+- `EquityCalculator` - Fast equity vs ranges
+- `HybridRangeEstimator` - Combined rules + ML
 
 **What Needs Integration:**
 - [ ] Add `PlayerProfile` tracking to `backend/app.py`
@@ -381,22 +382,22 @@ class EquityBasedStrategy:
    - Make decision based on equity + pot odds
 3. **After hand ends**: Store hand history, update stats
 
-### 🎯 Expected Outcomes
+### Expected Outcomes
 
 After Phase 3.5:
-- ✅ Bot makes +EV decisions based on equity
-- ✅ Adapts to opponent tendencies (tight vs loose)
-- ✅ Can value bet, bluff catch, and fold appropriately
-- ✅ **First truly playable intelligent bot!**
-- ✅ Bot intelligence: **6/10** (competent player level)
+- Bot makes +EV decisions based on equity
+- Adapts to opponent tendencies (tight vs loose)
+- Can value bet, bluff catch, and fold appropriately
+- First truly playable intelligent bot
+- Bot intelligence: 6/10 (competent player level)
 
 ---
 
-## 🚧 Upcoming: Phase 4 - CFR/RL Training
+## Upcoming: Phase 4 - CFR/RL Training
 
 Train the bot to play near-optimally through self-play and reinforcement learning.
 
-### 📋 Planned Approaches
+### Planned Approaches
 
 **4A. Counterfactual Regret Minimization (CFR)**
 - Bot plays millions of hands against itself
@@ -418,21 +419,21 @@ Train the bot to play near-optimally through self-play and reinforcement learnin
 - Use opponent modeling to identify weaknesses
 - Adapt strategy dynamically
 
-### 🎯 Expected Outcomes
+### Expected Outcomes
 
 After Phase 4:
 - Bot plays near-optimal poker (approaching GTO)
 - Can exploit opponent mistakes when detected
 - Robust against human exploitation attempts
-- **Bot intelligence: 9/10** (expert player level)
+- Bot intelligence: 9/10 (expert player level)
 
 ---
 
-## ✅ Phase 2 Complete: Simulation Layer
+## Phase 2 Complete: Simulation Layer
 
-The Monte Carlo simulation engine is now **fully implemented** with comprehensive equity calculation capabilities.
+The Monte Carlo simulation engine is now fully implemented with comprehensive equity calculation capabilities.
 
-### 📦 Implementation Details
+### Implementation Details
 
 **Files Added:**
 - `pypokerengine/simulation/hand_range.py` (258 lines)
@@ -453,7 +454,7 @@ The Monte Carlo simulation engine is now **fully implemented** with comprehensiv
 - `tests/simulation/` - 69 comprehensive tests (100% passing)
 - `examples/equity_demo.py` - Full demonstration script
 
-### 🎯 Key Features
+### Key Features
 
 - **Hand Range Parser**: Parse and manipulate poker hand ranges (e.g., `"JJ+"`, `"AKs"`, `"22-77"`)
 - **Monte Carlo Simulator**: Fast randomized simulations for equity calculation (10,000+ sims/sec)
@@ -462,7 +463,7 @@ The Monte Carlo simulation engine is now **fully implemented** with comprehensiv
 - **Range vs Range**: Calculate equity between complex hand ranges
 - **Blocker Removal**: Automatically accounts for known cards when generating ranges
 
-### ⚡ Performance
+### Performance
 
 | Metric | Performance |
 |--------|-------------|
@@ -503,11 +504,11 @@ python examples/equity_demo.py
 
 ---
 
-## ✅ Phase 1 & 5 Complete: Core Engine + Web UI
+## Phase 1 & 5 Complete: Core Engine + Web UI
  
-The core poker engine is **fully implemented** with a modern web interface for real-time gameplay.
+The core poker engine is fully implemented with a modern web interface for real-time gameplay.
 
-### 📦 Implementation Details (Phase 1)
+### Implementation Details (Phase 1)
 
 **Files Implemented:**
 - `pypokerengine/engine/card.py` - Card & Deck classes with shuffling
@@ -518,13 +519,13 @@ The core poker engine is **fully implemented** with a modern web interface for r
 - `pypokerengine/engine/game.py` - Game controller with blind rotation
 
 **Key Achievements:**
-- ✅ 100% custom-built (zero external poker libraries)
-- ✅ Accurate pot-limit betting calculations
-- ✅ Complete hand evaluation (Royal Flush → High Card)
-- ✅ Comprehensive logging system
-- ✅ Clean state API for AI/UI integration
+- 100% custom-built (zero external poker libraries)
+- Accurate pot-limit betting calculations
+- Complete hand evaluation (Royal Flush → High Card)
+- Comprehensive logging system
+- Clean state API for AI/UI integration
 
-### 📦 Implementation Details (Phase 5)
+### Implementation Details (Phase 5)
 
 **Files Implemented:**
 - `backend/app.py` (529 lines) - FastAPI with WebSocket support
@@ -532,10 +533,10 @@ The core poker engine is **fully implemented** with a modern web interface for r
 - `docker-compose.yml` - Containerized deployment
 
 **Key Features:**
-- ✅ Real-time gameplay via WebSockets
-- ✅ Modern poker table UI
-- ✅ Live action feed and game state updates
-- ✅ Responsive design for all screen sizes
+- Real-time gameplay via WebSockets
+- Modern poker table UI
+- Live action feed and game state updates
+- Responsive design for all screen sizes
 
 ### Quick Start (Web)
 
@@ -566,20 +567,20 @@ docker compose up --build
 The engine alone can be used from Python directly.
 
 #### Core Components
-- ✅ **Card & Deck Management**: Full 52-card deck with shuffling and dealing
-- ✅ **Player State Management**: Stack tracking, betting, actions, and hand history
-- ✅ **Hand Evaluator**: Complete 7-card poker hand evaluation (all rankings)
-- ✅ **Pot-Limit Action Manager**: Official pot-limit betting formula and validation
-- ✅ **Round Manager**: Complete betting round flow (preflop → river → showdown)
-- ✅ **Game Controller**: Multi-hand game management with blind rotation
+- **Card & Deck Management**: Full 52-card deck with shuffling and dealing
+- **Player State Management**: Stack tracking, betting, actions, and hand history
+- **Hand Evaluator**: Complete 7-card poker hand evaluation (all rankings)
+- **Pot-Limit Action Manager**: Official pot-limit betting formula and validation
+- **Round Manager**: Complete betting round flow (preflop → river → showdown)
+- **Game Controller**: Multi-hand game management with blind rotation
 
 #### Features
-- ✅ **Heads-Up Gameplay**: Full support for 2-player poker
-- ✅ **Pot-Limit Rules**: Accurate pot-limit betting calculations
-- ✅ **Complete Game Flow**: From deal to showdown with all streets
-- ✅ **State API**: Clean `get_state()` for AI/UI integration
-- ✅ **Logging System**: Comprehensive game event logging
-- ✅ **CLI Interface**: Interactive command-line play vs AI
+- **Heads-Up Gameplay**: Full support for 2-player poker
+- **Pot-Limit Rules**: Accurate pot-limit betting calculations
+- **Complete Game Flow**: From deal to showdown with all streets
+- **State API**: Clean `get_state()` for AI/UI integration
+- **Logging System**: Comprehensive game event logging
+- **CLI Interface**: Interactive command-line play vs AI
 
 ### Quick Start
 
@@ -666,16 +667,16 @@ pokerbot/
 
 ---
 
-## 📊 Testing & Metrics
+## Testing & Metrics
 
-- ✅ **Unit Tests:** For all core components and AI functions  
-- 🔁 **Integration Tests:** Verify full game flow and decision correctness  
-- ⚙️ **Performance Metrics:** Games/sec, exploitability, win rate vs baselines  
-- 🧾 **Experiment Tracking:** MLflow / Weights & Biases  
+- **Unit Tests:** For all core components and AI functions  
+- **Integration Tests:** Verify full game flow and decision correctness  
+- **Performance Metrics:** Games/sec, exploitability, win rate vs baselines  
+- **Experiment Tracking:** MLflow / Weights & Biases  
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 | Layer | Current | Planned (Phase 4+) |
 |--------|---------|-------------------|
@@ -699,7 +700,7 @@ pokerbot/
 
 ---
 
-## 🧑‍💻 Development Philosophy
+## Development Philosophy
 
 - **Clean modular design:** Each layer isolated and extendable  
 - **Strong typing + documentation:** Every class/function includes type hints and docstrings  
@@ -708,7 +709,7 @@ pokerbot/
 
 ---
 
-## 🚀 End Goal (Phase 1)
+## End Goal (Phase 1)
 
 Deliver a **robust, explainable poker AI** that can:
 - Play **Heads-Up Pot-Limit Hold’em** against humans in real time  
