@@ -14,18 +14,19 @@ Build a modular poker AI focused on:
 
 | Component | Status | Lines of Code | Tests |
 |-----------|--------|---------------|-------|
-| Core Engine (Phase 1) | Complete | ~1,500 | Pass |
-| Simulation Layer (Phase 2) | Complete | ~1,000 | 69/69 Pass |
-| Web Interface | Complete | ~1,500 | - |
-| Opponent Modeling (Phase 3) | Complete | ~2,800 | 44/44 Pass |
-| ML Range Predictor | Trained | 10k samples | 87.3% acc |
-| Bot Integration (Phase 3.5) | In Progress | ~500 | TBD |
+| Core Engine (Phase 1) | ✅ Complete | ~1,500 | Pass |
+| Simulation Layer (Phase 2) | ✅ Complete | ~1,000 | 69/69 Pass |
+| Web Interface | ✅ Complete | ~1,500 | - |
+| Opponent Modeling (Phase 3) | ✅ Complete | ~2,800 | 44/44 Pass |
+| ML Range Predictor | ✅ Trained | 10k samples | 87.3% acc |
+| **Bot Integration (Phase 3.5)** | **✅ Complete** | **~1,200** | **6/6 Pass** |
 | CFR/RL Training (Phase 4) | Planned | TBD | TBD |
 
-Phase 1-3 Complete: 5,600+ lines, 113 tests passing  
+**Phase 1-3.5 Complete: 6,500+ lines, 119 tests passing**  
 Trained Model: RandomForest (10k equity-based samples, 87.3% validation accuracy)  
-Current Capabilities: Equity calculation + Opponent modeling (rule-based & ML) + HU-calibrated predictions  
-Next Milestone: Integrate opponent modeling with bot for intelligent decision-making  
+**Current Capabilities**: Full intelligent bot with equity-based decisions, opponent tracking, dynamic bet sizing, and exploitative strategy  
+**Bot Intelligence**: 6/10 (competent player level)  
+Next Milestone: GTO baseline with CFR training  
 End Goal: Near-optimal play through CFR/RL training
 
 Future expansions (multiplayer, rule variants) will be added after AI reaches production-stable.
@@ -85,10 +86,13 @@ The AI learns through a hybrid of CFR and RL with opponent modeling and equity s
    - Self-play training loop
    - Opponent adaptation
 
-4. Opponent Modeling
-   - Player profiling (VPIP, PFR, AF)
-   - Bayesian hand range inference
+4. Opponent Modeling & Bot Strategy
+   - Player profiling (VPIP, PFR, AF, fold-to-cbet)
+   - Rule-based + ML range estimation
    - Real-time behavioral adjustments
+   - Equity-based decision making
+   - Dynamic bet sizing with randomization
+   - Exploitative bluffing strategy
 
 5. Web Layer
    - FastAPI backend (game state, sockets, REST endpoints)

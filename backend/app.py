@@ -17,6 +17,7 @@ from pypokerengine.engine import Game
 from pypokerengine.engine.player import Player
 from pypokerengine.engine.action_manager import ActionManager
 from pypokerengine.engine.round import Street
+from pypokerengine.strategy import BotStrategy
 
 
 class StartGameRequest(BaseModel):
@@ -44,6 +45,13 @@ class SessionState:
         self.human_name = human_name
         self.bot_name = bot_name
         self.action_log = []  # list[str]
+        # Initialize bot strategy
+        self.bot_strategy = BotStrategy(
+            bot_name=bot_name,
+            opponent_name=human_name,
+            aggression_level=1.0,  # Balanced aggression
+            n_simulations=5000  # Fast equity calculations
+        )
 
 
 app = FastAPI()
@@ -152,8 +160,23 @@ def _apply_action(round_obj, player: Player, action: str, amount: int, session: 
         # Fallback: append minimal record
         round_obj.action_history.append({"player": player.name, "action": action, "amount": amount, "street": round_obj.street.value})
         round_obj.street_actions.setdefault(round_obj.street, []).append({"player": player.name, "action": action, "amount": amount, "street": round_obj.street.value})
-    # Log action
+    
+    # Record action in bot strategy for opponent modeling
     if session is not None:
+        # Determine position (simplified for heads-up)
+        position = "BTN" if player == round_obj.players[round_obj.dealer_position] else "BB"
+        
+        # Record the action
+        session.bot_strategy.record_action(
+            player_name=player.name,
+            action=action,
+            amount=amount,
+            street=round_obj.street,
+            current_bet=round_obj.current_bet,
+            position=position
+        )
+        
+        # Log action for display
         desc = ActionManager.get_action_description(action, amount, player.name)
         session.action_log.append(desc)
 
@@ -240,6 +263,10 @@ def _maybe_finish_hand(session: SessionState):
         result = round_obj.determine_winner()
         winners = ", ".join(result.get("winners", []))
         session.action_log.append(f"{winners} wins — {result.get('winning_hand', 'opponent folded')}; Pot: {result.get('pot')}")
+        
+        # Update bot strategy: hand ended (no showdown)
+        winner_name = result.get("winners", [""])[0]
+        session.bot_strategy.end_hand(winner=winner_name, showdown=False)
     
     # Handle showdown case
     if round_obj.street == Street.SHOWDOWN and not round_obj.is_complete:
@@ -247,6 +274,10 @@ def _maybe_finish_hand(session: SessionState):
         result = round_obj.determine_winner()
         winners = ", ".join(result.get("winners", []))
         session.action_log.append(f"Showdown — Winner(s): {winners}; Pot: {result.get('pot')}")
+        
+        # Update bot strategy: hand ended at showdown
+        winner_name = result.get("winners", [""])[0]
+        session.bot_strategy.end_hand(winner=winner_name, showdown=True)
 
 
 def _evaluate_player_hand(player: Player, round_obj) -> Optional[str]:
@@ -330,7 +361,8 @@ def _state_dict(session: SessionState) -> Dict[str, Any]:
 
 def _auto_play_bots(session: SessionState):
     """
-    Make the bot act ONCE. Stop after one action.
+    Make the bot act ONCE using intelligent strategy.
+    Stop after one action.
     The frontend will call this again after the timer expires for the next action.
     """
     game = session.game
@@ -353,7 +385,7 @@ def _auto_play_bots(session: SessionState):
     if actor.name == session.human_name:
         return
     
-    # Bot acts ONCE with simple policy
+    # Bot acts ONCE with intelligent strategy
     amount_to_call = round_obj.current_bet - actor.current_bet
     
     # Handle forced all-in FIRST: if bot can't match bet but has chips, call with all chips
@@ -362,26 +394,55 @@ def _auto_play_bots(session: SessionState):
         _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
         print(f"Bot {actor.name} forced all-in: called {round_obj.current_bet} with stack {actor.stack}")
     else:
-        # Normal action logic
+        # Use intelligent strategy to decide action
         legal = _legal_actions_for(round_obj, actor)
         print(f"Bot {actor.name} acting: legal={legal}, street={round_obj.street.value}, current_bet={round_obj.current_bet}, actor.current_bet={actor.current_bet}, stack={actor.stack}")
         
-        if legal.get("check"):
-            _apply_action(round_obj, actor, "check", 0, session)
-            print(f"Bot {actor.name} checked")
-        elif legal.get("call"):
-            _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
-            print(f"Bot {actor.name} called {round_obj.current_bet}")
-        else:
-            # If fold is the only option, but player can still act (has chips), 
-            # and there's a bet they can't match, they should go all-in instead of folding
-            if amount_to_call > 0 and actor.stack > 0 and actor.can_act():
-                # Forced all-in instead of folding
+        try:
+            # Get opponent's last action for range estimation
+            opponent = next((p for p in round_obj.players if p.name == session.human_name), None)
+            opponent_last_action = None
+            if round_obj.action_history:
+                # Find most recent opponent action
+                for action_dict in reversed(round_obj.action_history):
+                    if action_dict.get('player') == session.human_name:
+                        opponent_last_action = action_dict.get('action')
+                        break
+            
+            # Determine position (simplified for heads-up)
+            position = "BTN" if actor == round_obj.players[round_obj.dealer_position] else "BB"
+            
+            # Get bot's decision
+            action_str, action_amount = session.bot_strategy.decide_action(
+                hero_hand=actor.hole_cards,
+                board=round_obj.community_cards,
+                pot=round_obj.pot,
+                current_bet=round_obj.current_bet,
+                hero_current_bet=actor.current_bet,
+                hero_stack=actor.stack,
+                street=round_obj.street,
+                position=position,
+                legal_actions=legal,
+                big_blind=round_obj.big_blind,
+                opponent_last_action=opponent_last_action
+            )
+            
+            # Apply the action
+            _apply_action(round_obj, actor, action_str, action_amount, session)
+            print(f"Bot {actor.name} decided: {action_str} {action_amount}")
+            
+        except Exception as e:
+            # Fallback to safe play if strategy fails
+            print(f"Bot strategy error: {e}. Falling back to safe play.")
+            if legal.get("check"):
+                _apply_action(round_obj, actor, "check", 0, session)
+                print(f"Bot {actor.name} checked (fallback)")
+            elif legal.get("call"):
                 _apply_action(round_obj, actor, "call", round_obj.current_bet, session)
-                print(f"Bot {actor.name} forced all-in instead of folding: called {round_obj.current_bet} with stack {actor.stack}")
+                print(f"Bot {actor.name} called (fallback)")
             else:
                 _apply_action(round_obj, actor, "fold", 0, session)
-                print(f"Bot {actor.name} folded")
+                print(f"Bot {actor.name} folded (fallback)")
     
     # After bot action, check if hand finished
     _maybe_finish_hand(session)
